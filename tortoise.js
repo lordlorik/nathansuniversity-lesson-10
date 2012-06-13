@@ -693,8 +693,9 @@ tortoise = (function (undefined) {
             // Unary operators
 
             case '!':
-                script.append('!');
+                script.append('(');
 				compileExpr(expr.arg, lookup, script);
+                script.append(' ? 0 : 1)');
 				break;
 
 			case 'neg':

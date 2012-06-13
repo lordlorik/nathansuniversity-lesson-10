@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Tortoise Live Demo by Lord Lorik</title>
+    <title>Tortoise & Hare Live Demo by Lord Lorik</title>
     <link rel="stylesheet" href="codemirror/codemirror.css">
     <link rel="stylesheet" href="codemirror/blackboard.css">
     <script src="http://nathansuniversity.com/js/jquery-1.7.1.min.js"></script>
@@ -28,41 +28,30 @@
 
 <div id="editor">
 <textarea id="input" style="width: 100%; height: 300px;">
-define polygon (sides, radius, color) {
-    const angle := 360 / sides;
-    const side := 2 * radius * sin(180 / sides);
-    const initial_angle := 90 + angle / 2;
+define curve(size, angle, scale, count) {
+	if (!count) return;
+	forward(size);
+	left(angle);
+	curve(size * scale, angle, scale, count - 1);
 
-    pen_up();
-    set_heading(90);
-    set_ink(color);
-    forward(radius);
-    pen_down();
-    right(initial_angle);
-    while (sides) {
-        forward(side);
-        right(angle);
-        sides -= 1;
-    }
-    pen_up();
-    left(initial_angle);
-    backward(radius);
-    return angle;
+	right(90);
+	curve(size * scale ** 2, angle, scale, count - 1);
+	left(90);
+
+	right(angle + 180);
+	pen_down();
+	set_ink(count < 2 ? #0a0 : #a50);
+	set_pen_width(count < 2 ? 10 : count);
+	forward(size);
+	pen_up();
+	left(180);
 }
-
-const radius := 200;
-
-clear();
-set_paper(#ccc);
-set_pen_width(2);
-set_pen_opacity(0.5);
-polygon(9, radius, #aaa);
-polygon(8, radius, #a00);
-polygon(7, radius, #0a0);
-polygon(6, radius, #00a);
-polygon(5, radius, #aa0);
-polygon(4, radius, #0aa);
-polygon(3, radius, #a0a);
+ 
+pen_up();
+right(180);
+forward(100);
+right(180);
+curve(100, 29, 0.80, 10);
 </textarea>
 </div>
 <div id="buttons">

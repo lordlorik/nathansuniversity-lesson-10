@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Tortoise & Hare Live Demo by Lord Lorik</title>
+    <link rel="stylesheet" href="codemirror/codemirror.css">
+    <link rel="stylesheet" href="codemirror/blackboard.css">
+    <script src="http://nathansuniversity.com/js/jquery-1.7.1.min.js"></script>
+    <script src="codemirror/codemirror.js"></script>
+    <script src="codemirror/tortoise.js"></script>
+    <script src="http://nathansuniversity.com/js/raphael-min.js"></script>
+    <script src="javascripts/turtle.js"></script>
+    <script src="javascripts/parser.js"></script>
+    <script src="javascripts/tortoise.js"></script>
+    <style>
+    table, tr, td { border: 0; }
+    table { width: 100%; }
+	pre { white-space: pre-wrap; }
+    #editor { border: 2px solid #555; border-radius: 3px; min-width: 90%; max-width: 1000px; float: left; position: relative; }
+    #buttons { float: left; position: relative; clear: right; }
+    #buttons input { width: 8em; margin-left: 1em; }
+    #turtlecanvas { width: 45%; height: 500px; float: left; border: 1px solid #000; }
+    #console { padding: 0 1em; margin-left: 1em; border: solid 1px; border-radius: 5px; font-family: Consolas, Courier New, monospace; width: 50%; height: 500px; float: left; clear: right; overflow: auto; }
+    #turtlecanvas, #console { margin-top: 1em; }
+    </style>
+</head>
+<body>
+
+<div id="editor">
+<textarea id="input" style="width: 100%; height: 300px;">
+define curve(size, angle, scale, count) {
+	if (!count) return;
+	forward(size);
+	left(angle);
+	curve(size * scale, angle, scale, count - 1);
+
+	right(90);
+	curve(size * scale ** 2, angle, scale, count - 1);
+	left(90);
+
+	right(angle + 180);
+	pen_down();
+	set_ink(count < 2 ? #0a0 : #a50);
+	set_pen_width(count < 2 ? 10 : count);
+	forward(size);
+	pen_up();
+	left(180);
+}
+ 
+pen_up();
+right(180);
+forward(100);
+right(180);
+curve(100, 29, 0.80, 10);
+</textarea>
+</div>
+<div id="buttons">
+    <input id="runButton" type="button" value="Run" /><br />
+    <input id="stepButton" type="button" value="1 Step" /><br />
+    <input id="10stepsButton" type="button" value="10 Steps" /><br />
+    <input id="100stepsButton" type="button" value="100 Steps" /><br />
+    <input id="compileButton" type="button" value="Compile+Run" /><br />
+    <input id="clearButton" type="button" value="Clear" />
+</div>
+<div id="turtlecanvas"></div>
+<div id="console"></div>
+
+<script>
+    var log = function(msg) {
+        $('#console').append($('<p></p>').append($('<pre></pre>').text(msg)));
+    };
+
+    // After page load
+    $(function() {
+        var myCodeMirror = CodeMirror.fromTextArea($('#input').get(0), {
+            mode: 'tortoise',
+            theme: 'blackboard',
+            lineNumbers: true
+        });
+
+        var myTurtle = new Turtle('turtlecanvas');
+        var colorToArray = function (c) { return [(c >> 16) & 255, (c >> 8) & 255, c & 255]; };
+        var paper = '#ffffff';
+        var cont = null;
+        var contSteps = 0;
+
+        tortoise.addBindingFunc('forward', function (d) { myTurtle.forward(d); }, 1);
+        tortoise.addBindingFunc('backward', function (d) { myTurtle.forward(-d); }, 1);
+        tortoise.addBindingFunc('left', function (a) { myTurtle.left(a); }, 1);
+        tortoise.addBindingFunc('right', function (a) { myTurtle.right(a); }, 1);
+        tortoise.addBindingFunc('set_heading', function (h) { myTurtle.setHeading(h); }, 1);
+        tortoise.addBindingFunc('get_heading', function () { return myTurtle.angle; }, 0);
+        tortoise.addBindingFunc('set_position', function (x, y) { myTurtle.setPosition(x, y); }, 2);
+        tortoise.addBindingFunc('get_position_x', function () { return myTurtle.x; }, 0);
+        tortoise.addBindingFunc('get_position_y', function () { return myTurtle.y; }, 0);
+        tortoise.addBindingFunc('home', function () { myTurtle.home(); }, 0);
+        tortoise.addBindingFunc('clear', function () { myTurtle.clear(); }, 0);
+        tortoise.addBindingFunc('pen_up', function () { myTurtle.penup(); }, 0);
+        tortoise.addBindingFunc('pen_down', function () { myTurtle.pendown(); }, 0);
+        tortoise.addBindingFunc('is_pen_down', function () { return myTurtle.pen ? 1 : 0; }, 0);
+        tortoise.addBindingFunc('set_ink', function (c) { myTurtle.setColor.apply(myTurtle, colorToArray(c)); }, 1);
+        tortoise.addBindingFunc('get_ink', function () { return parseInt(myTurtle.color.substr(1), 16); }, 0);
+        tortoise.addBindingFunc('set_paper', function (c) { jQuery('#turtlecanvas').css('background-color', paper = Raphael.rgb.apply(Raphael, colorToArray(c))); }, 1);
+        tortoise.addBindingFunc('get_paper', function () { return parseInt(paper.substr(1), 16); }, 0);
+        tortoise.addBindingFunc('set_pen_width', function (w) { myTurtle.setWidth(w); }, 1);
+        tortoise.addBindingFunc('get_pen_width', function () { return myTurtle.width; }, 0);
+        tortoise.addBindingFunc('set_pen_opacity', function (o) { myTurtle.setOpacity(o); }, 1);
+        tortoise.addBindingFunc('get_pen_opacity', function () { return myTurtle.opacity; }, 0);
+
+        var doStep = function () {
+            log('> STEP');
+            if (cont === null) {
+                var input = myCodeMirror.getValue();
+
+                log(input);
+                try {
+                    var parsed = tortoiseParser.parse(input);
+
+                    log('<< PARSED ' + JSON.stringify(parsed) + ' >>');
+                    try {
+                        cont = tortoise.stepStart(parsed);
+                        contSteps = 1;
+                    }
+                    catch (e) {
+                        log('> ERROR ' + e);
+                    }
+                }
+                catch (e) {
+                    log('> ERROR ' + e);
+                }
+            }
+            else {
+                ++contSteps;
+                if (tortoise.step(cont)) {
+                    log('> ' + JSON.stringify(tortoise.stepEnd(cont)));
+                    log('> TOTAL STEPS: ' + contSteps);
+
+                    cont = null;
+                    $('#stepButton, #10stepsButton, #100stepsButton').attr('disabled', true);
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        $('#runButton').click(function() {
+            var input = myCodeMirror.getValue();
+
+            log(input);
+            try {
+                var parsed = tortoiseParser.parse(input);
+
+                log('<< PARSED ' + JSON.stringify(parsed) + ' >>');
+                try {
+					var start = +(new Date());
+                    var result = tortoise.evalTortoise(parsed);
+					var time = +(new Date()) - start;
+
+                    log('> ' + JSON.stringify(result));
+					log('> TIME: ' + time + 'ms');
+                }
+                catch (e) {
+                    log('> ERROR ' + e);
+                }
+            }
+            catch (e) {
+                log('> ERROR ' + e);
+            }
+        });
+        $('#stepButton').click(doStep);
+        $('#10stepsButton').click(function () { for (var i = 0; i < 10; ++i) if (!doStep()) break; });
+        $('#100stepsButton').click(function () { for (var i = 0; i < 100; ++i) if (!doStep()) break; });
+        $('#compileButton').click(function() {
+            var input = myCodeMirror.getValue();
+
+            log(input);
+            try {
+                var parsed = tortoiseParser.parse(input);
+
+                log('<< PARSED ' + JSON.stringify(parsed) + ' >>');
+                try {
+					var start = +(new Date());
+                    var script = tortoise.compileTortoise(parsed);
+					var result = eval(script)();
+					var time = +(new Date()) - start;
+
+                    log('> COMPILED ' + JSON.stringify(script));
+                    log('> ' + JSON.stringify(result));
+					log('> TIME: ' + time  + 'ms');
+                }
+                catch (e) {
+                    log('> ERROR ' + e);
+                }
+            }
+            catch (e) {
+                log('> ERROR ' + e);
+            }
+        });
+        $('#clearButton').click(function() {
+            $('#console').html('');
+            $('#stepButton, #10stepsButton, #100stepsButton').attr('disabled', false);
+            myTurtle.clear();
+            cont = null;
+            log('WELCOME!');
+        }).click();
+    });
+</script>
+</body>
+</html>

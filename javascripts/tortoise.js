@@ -713,10 +713,6 @@ tortoise = (function (undefined) {
             case '%':
             case '==':
             case '!=':
-            case '<':
-            case '>':
-            case '<=':
-            case '>=':
             case '&&':
             case '||':
                 script.append('(');
@@ -726,6 +722,17 @@ tortoise = (function (undefined) {
                 script.append(')');
 				break;
 
+            case '<':
+            case '>':
+            case '<=':
+            case '>=':
+                script.append('(');
+				compileExpr(expr.left, lookup, script);
+                script.append(' ').append(tag).append(' ');
+				compileExpr(expr.right, lookup, script);
+                script.append(' ? 1 : 0)');
+				break;
+				
 			case '**':
                 script.append('$.pow(');
 				compileExpr(expr.left, lookup, script);
@@ -807,14 +814,14 @@ tortoise = (function (undefined) {
 			script.appendLine('"undefined": [][0],');
 			script.appendLine('"throw": function (msg) { throw(msg || "User exception"); },');
 			script.appendLine('"pow": Math.pow,');
-			script.appendLine('"lt_lt": function (l, m, r) { return l < m && m < r; },');
-			script.appendLine('"lt_lte": function (l, m, r) { return l < m && m <= r; },');
-			script.appendLine('"lte_lt": function (l, m, r) { return l <= m && m < r; },');
-			script.appendLine('"lte_lte": function (l, m, r) { return l <= m && m <= r; },');
-			script.appendLine('"gt_gt": function (l, m, r) { return l > m && m > r; },');
-			script.appendLine('"gt_gte": function (l, m, r) { return l > m && m >= r; },');
-			script.appendLine('"gte_gt": function (l, m, r) { return l >= m && m > r; },');
-			script.appendLine('"gte_gte": function (l, m, r) { return l >= m && m >= r; }');
+			script.appendLine('"lt_lt": function (l, m, r) { return (l < m && m < r) ? 1 : 0; },');
+			script.appendLine('"lt_lte": function (l, m, r) { return (l < m && m <= r) ? 1 : 0; },');
+			script.appendLine('"lte_lt": function (l, m, r) { return (l <= m && m < r) ? 1 : 0; },');
+			script.appendLine('"lte_lte": function (l, m, r) { return (l <= m && m <= r) ? 1 : 0; },');
+			script.appendLine('"gt_gt": function (l, m, r) { return (l > m && m > r) ? 1 : 0; },');
+			script.appendLine('"gt_gte": function (l, m, r) { return (l > m && m >= r) ? 1 : 0; },');
+			script.appendLine('"gte_gt": function (l, m, r) { return (l >= m && m > r) ? 1 : 0; },');
+			script.appendLine('"gte_gte": function (l, m, r) { return (l >= m && m >= r) ? 1 : 0; }');
 			script.endBlock('};');
 		}
 	};

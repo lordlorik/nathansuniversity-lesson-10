@@ -602,7 +602,7 @@ tortoise = (function (undefined) {
 				tmp = tmpVar();
 				script.appendBeginLine('var ').append(tmp).append(' = ');
 				compileExpr(stmt.expr, lookup, script);
-				script.appendEndLine(';').appendBeginLine('while (').append(tmp).appendBeginInlineBlock('--) {');
+				script.appendEndLine(';').appendBeginLine('while (').append(tmp).beginInlineBlock('--) {');
 				compileStatements(stmt.body, script, lookup, false);
 				script.endBlock('}');
 				break;
